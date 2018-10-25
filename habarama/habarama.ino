@@ -14,9 +14,6 @@
 #define sensor_type "......"
 #define sensor_location "......"
 
-#define actor_name "......"
-#define actor_location "......"
-
 #define mqtt_server "broker-amq-mqtt-ssl-57-hogarama.cloud.itandtel.at"
 #define mqtt_server_port 443
 #define mqtt_user "mq_habarama"
@@ -25,6 +22,16 @@
 WiFiClientSecure espClient;
 PubSubClient client(espClient);
 
+typedef struct {
+  byte pin;
+  long ticks_until;
+  String topic;
+} actor_type;
+
+actor_type actors[] = {
+  // {D0, 0, "actor.<location>.<actor name 1>"},
+  // {D1, 0, "actor.<location>.<actor name 2>"}
+};
 
 void setup() {
   Serial.begin(115200);
@@ -32,6 +39,10 @@ void setup() {
   WiFiManager wifiManager;
   wifiManager.autoConnect();
 
+  for (byte i = 0; i < (sizeof(actors) / sizeof(*actors)); i++) {
+    pinMode(actors[i].pin, OUTPUT);
+    digitalWrite(actors[i].pin, LOW);
+  }
 
   espClient.allowSelfSignedCerts();
   client.setServer(mqtt_server, mqtt_server_port);
@@ -39,8 +50,42 @@ void setup() {
 }
 
 void mqtt_callback(char* topic, byte* payload, unsigned int length) {
-  Serial.print("mqtt callback: ");
+  Serial.print("mqtt topic: ");
   Serial.println(topic);
+
+  
+  StaticJsonBuffer<200> jsonBuffer;
+  JsonObject& root = jsonBuffer.parseObject(payload);
+
+  for (byte i = 0; i < (sizeof(actors) / sizeof(*actors)); i++) {
+    if (strcmp(topic, actors[i].topic.c_str()) == 0) {
+      Serial.println("actor found");
+
+      if (!root.success()) {
+        Serial.println("ParsenObject() failed");
+        return;
+      }
+
+      const char* type = root["type"];
+      long duration = root["duration"];
+
+      if (strcmp(type, "gpio") == 0) {
+        setGpio(&actors[i], duration);
+      } else {
+        Serial.println("Unknown actor type");
+        return;
+      }
+
+      break;
+    }
+  }
+}
+
+void setGpio(actor_type *actor, long duration) {
+  actor->ticks_until = millis() + duration;
+
+  digitalWrite(actor->pin, HIGH);
+  Serial.println("Actor set");
 }
 
 void reconnect() {
@@ -52,17 +97,15 @@ void reconnect() {
     if (client.connect("ESP8266Client", mqtt_user, mqtt_password)) {
       Serial.println("connected");
 
-      Serial.println("Subscribing for actor");
-      // "actor.{}.{}".format (actor['location'], actor['name'])
-      char buffer [7 + sizeof(actor_location) + sizeof(actor_name)];
-
-      sprintf(buffer, "actor.%s.%s", actor_location, actor_name);
-
-      if (client.subscribe(buffer)) {
-        Serial.println("Successfully subscribed");
-      }
-      else {
-        Serial.println("Failed to subscribe....");
+      for (byte i = 0; i < (sizeof(actors) / sizeof(*actors)); i++) {
+        if (actors[i].topic.length()) {
+          if (client.subscribe(actors[i].topic.c_str())) {
+            Serial.println("Successfully subscribed");
+          }
+          else {
+            Serial.println("Failed to subscribe....");
+          }
+        }
       }
     } else {
       Serial.print("failed, rc=");
@@ -81,6 +124,12 @@ void loop() {
     reconnect();
   }
   client.loop();
+
+  for (byte i = 0; i < (sizeof(actors) / sizeof(*actors)); i++) {
+    if (actors[i].ticks_until < millis()) {
+      digitalWrite(actors[i].pin, LOW);
+    }
+  }
 
   long now = millis();
   if (now - lastMsg > 60000) {
