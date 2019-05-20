@@ -8,25 +8,18 @@
 #include <ArduinoJson.h>          // Library to parse Json. Used for payload of mqtt
 #include <stdio.h>
 
+
+#include "settings.h"
+
+
 // configuration for sensor
 #define sensor_name "......"
 #define sensor_type "......"
 #define sensor_location "......"
 
-// configuration for mqtt server
-#define mqtt_server "broker-amq-mqtt-ssl-57-hogarama.cloud.itandtel.at"
-#define mqtt_server_port 443
-#define mqtt_user "mq_habarama"
-#define mqtt_password "mq_habarama_pass"
 
 WiFiClientSecure espClient;
 PubSubClient client(espClient);
-
-typedef struct {
-  byte pin; // the pin where the actor is connected to
-  long ticks_until; // the ticks until the pin should be triggered. Should be initialized with 0.
-  String topic; // the topic this actor should listen to
-} actor_type;
 
 // configuration for actor.
 actor_type actors[] = {
@@ -39,6 +32,13 @@ long lastReconnect = 0;
 
 void setup() {
   Serial.begin(115200);
+
+  if(!loadSettings()){
+    Serial.println("Failed to load settings, save them");
+    if(!saveSettings()){
+      Serial.println("Oh, noooo");
+    }
+  }
 
   initializeWifi();
 
@@ -64,7 +64,7 @@ void initializeActors() {
 
 void initializeMqtt() {
   espClient.allowSelfSignedCerts();
-  client.setServer(mqtt_server, mqtt_server_port);
+  client.setServer(Settings.mqtt_host, Settings.mqtt_port);
   client.setCallback(mqtt_callback);
 }
 
@@ -114,7 +114,7 @@ void reconnect() {
     Serial.print("Attempting MQTT connection...");
 
     // Attempt to connect
-    if (client.connect("ESP8266Client", mqtt_user, mqtt_password)) {
+    if (client.connect("ESP8266Client", Settings.mqtt_user, Settings.mqtt_pwd)) {
       Serial.println("connected");
 
       subscribeToMqtt();
