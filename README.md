@@ -15,9 +15,10 @@ IDE: [Arduino](https://www.arduino.cc/en/Main/Software)
 
 ### Dependencies
 * ESP8266 Board ([Github](https://github.com/esp8266/Arduino))
-* PubSubClient 2.6.0 ([Github](https://github.com/knolleary/pubsubclient))
-* ArduinoJson 5.13.3 ([Github](https://github.com/bblanchon/ArduinoJson))
+* PubSubClient 2.7.0 ([Github](https://github.com/knolleary/pubsubclient))
+* ArduinoJson 5.13.5 ([Github](https://github.com/bblanchon/ArduinoJson))
 * WifiManager 0.14.0 ([Github](https://github.com/tzapu/WiFiManager))
+* NTPClient 3.1.0 ([Github](https://github.com/arduino-libraries/NTPClient))
 
 ## Installation
 

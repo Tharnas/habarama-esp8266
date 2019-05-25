@@ -19,6 +19,7 @@ struct settings_type {
   char          mqtt_client[33];     
   char          mqtt_user[33];
   char          mqtt_pwd[33];
+  bool          mqtt_ssl;
 
   actor_type    actors[MAX_ACTORS];
 } Settings;
